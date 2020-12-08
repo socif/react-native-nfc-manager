@@ -549,6 +549,57 @@ RCT_EXPORT_METHOD(sendMifareCommand:(NSArray *)bytes callback: (nonnull RCTRespo
     }
 }
 
+RCT_EXPORT_METHOD(readOctopusValue:(NSArray *)bytes callback:(nonnull RCTResponseSenderBlock)callback)
+{
+    if (@available(iOS 13.0, *)) {
+        if (sessionEx != nil) {
+            if (sessionEx.connectedTag) {
+                id<NFCFeliCaTag> felicaTag = [sessionEx.connectedTag asNFCFeliCaTag];
+//                NSData *data = [self arrayToData:bytes];
+//
+//                NSData *block = [self arrayToData:blocks];
+//                NSLog(@"input bytes: %@", getHexString(data));
+                unsigned char rawSC[] = {0x17,0x01};
+                NSData *serviceCode = [NSData dataWithBytes:rawSC length:2];
+                unsigned char rawBlock[] = {0x80,0x00};
+                NSData *block = [NSData dataWithBytes:rawBlock length:2];
+                NSLog(@"input bytes: %@",getHexString(serviceCode));
+                NSLog(@"input blocks: %@",getHexString(block));
+
+                if (felicaTag) {
+                    [felicaTag readWithoutEncryptionWithServiceCodeList:[NSArray arrayWithObjects:serviceCode, nil]
+                            blockList:[NSArray arrayWithObjects:block, nil]
+                               completionHandler:^(NSInteger statusFlag1, NSInteger statusFlag2, NSArray<NSData *> *blockData, NSError *error) {
+                        if (error) {
+                            NSLog(@"error:");
+                            NSLog(@"statusFlag1: %ld",(long)statusFlag1);
+                            NSLog(@"statusFlag2: %ld",(long)statusFlag2);
+                            NSLog(@"OK is: %@",blockData);
+                            NSLog(@"Error is: %@",getErrorMessage(error));
+                            callback(@[getErrorMessage(error), [NSNull null]]);
+                        } else {
+                            NSLog(@"OK:");
+                            NSLog(@"statusFlag1: %ld",(long)statusFlag1);
+                            NSLog(@"statusFlag2: %ld",(long)statusFlag2);
+                            NSLog(@"OK is: %@",getHexString(blockData[0]));
+                            NSLog(@"Error is: %@",getErrorMessage(error));
+                            callback(@[[NSNull null], getHexString(blockData[0])]);
+                        }
+                    }];
+                    return;
+                } else {
+                    callback(@[@"not a felica tag", [NSNull null]]);
+                }
+            }
+            callback(@[@"Not connected", [NSNull null]]);
+        } else {
+            callback(@[@"Not even registered", [NSNull null]]);
+        }
+    } else {
+        callback(@[@"Not support in this device", [NSNull null]]);
+    }
+}
+
 RCT_EXPORT_METHOD(sendFelicaCommand:(NSArray *)bytes callback: (nonnull RCTResponseSenderBlock)callback)
 {
     if (@available(iOS 13.0, *)) {
